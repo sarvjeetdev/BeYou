@@ -1,0 +1,23 @@
+# Ignore environment variable files
+.env
+.env.*
+*.env
+
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore database files
+*.sqlite3
+
+# Ignore logs
+*.log
+
+# Ignore Docker and Python virtual environment files (if applicable)
+docker-compose.override.yml
+*.envrc
+.vscode/
+.idea/
+*.DS_Store

@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+  backend:
+    build: ./backend
+    container_name: django_backend
+    restart: always
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    dns:
+      - 8.8.8.8   # Google's public DNS
+      - 1.1.1.1   # Cloudflare's DNS
+
+    # depends_on:
+    #   - db
+
+  # db:
+  #   image: mongo:latest
+  #   container_name: mongodb
+  #   restart: always
+  #   volumes:
+  #     - mongo_data:/data/db
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: root
+  #     MONGO_INITDB_ROOT_PASSWORD: password
+
+  nginx:
+    build: ./nginx
+    container_name: nginx_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
