@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Search Users{% endblock %}
+{% load form_tags %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h3>Search Users</h3>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{% url 'search-users' %}" class="mb-4">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Search by username..." value="{{ query }}">
+                <button class="btn btn-primary" type="submit">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </form>
+        
+        {% if users %}
+            <div class="row">
+                {% for user_obj in users %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="{{ user_obj.profile.profile_pic.url }}" class="rounded-circle mb-2" style="width: 80px; height: 80px;">
+                                <h5 class="card-title">{{ user_obj.username }}</h5>
+                                <p class="card-text small">{{ user_obj.profile.bio|truncatechars:50 }}</p>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'send-friend-request' user_obj.id %}" class="btn btn-primary">
+                                        <i class="fas fa-user-plus"></i> Add Friend
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% if query %}
+                <p class="text-muted">No users found matching "{{ query }}"</p>
+            {% else %}
+                <p class="text-muted">Search for users by typing in the search box above.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

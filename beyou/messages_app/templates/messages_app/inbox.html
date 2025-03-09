@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h3>Messages</h3>
+    </div>
+    <div class="card-body">
+        {% if message_users %}
+            <div class="list-group">
+                {% for user_obj in message_users %}
+                    <a href="{% url 'view-messages' user_obj.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <img src="{{ user_obj.profile.profile_pic.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px;">
+                                <strong>{{ user_obj.username }}</strong>
+                            </div>
+                            {% with last_msg=user_obj.sent_messages.filter.first %}
+                                {% if last_msg and not last_msg.is_read and last_msg.receiver == request.user %}
+                                    <span class="badge bg-primary rounded-pill">New</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">You haven't exchanged messages with anyone yet.</p>
+            <a href="{% url 'friends-list' %}" class="btn btn-outline-primary">Message a friend</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
