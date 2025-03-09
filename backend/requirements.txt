@@ -1,0 +1,10 @@
+django==3.2.20 
+python-dotenv==1.0.1
+sqlparse==0.2.4
+cryptography
+asgiref==3.8.1
+cffi==1.17.1
+cryptography==44.0.2
+pillow==11.1.0
+pycparser==2.22
+tzdata==2025.1
