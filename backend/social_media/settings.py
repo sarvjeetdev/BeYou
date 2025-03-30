@@ -176,4 +176,5 @@ SESSION_COOKIE_SECURE = True     # Only send session cookies over HTTPS
 CSRF_COOKIE_SECURE = True        # Only send CSRF token over HTTPS
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_SSL_REDIRECT = True       # Redirect all HTTP to HTTPS (after HTTPS is working!)
+SECURE_SSL_REDIRECT = True  # Only if Nginx is handling HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')    # Redirect all HTTP to HTTPS (after HTTPS is working!)
