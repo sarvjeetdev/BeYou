@@ -1,48 +1,46 @@
 {% extends 'base.html' %}
-{% block title %}Search Users{% endblock %}
-{% load form_tags %}
+{% load custom_filters %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h3>Search Users</h3>
-    </div>
-    <div class="card-body">
-        <form method="GET" action="{% url 'search-users' %}" class="mb-4">
-            <div class="input-group">
-                <input type="text" name="q" class="form-control" placeholder="Search by username..." value="{{ query }}">
-                <button class="btn btn-primary" type="submit">
-                    <i class="fas fa-search"></i> Search
-                </button>
-            </div>
-        </form>
-        
-        {% if users %}
-            <div class="row">
-                {% for user_obj in users %}
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <img src="{{ user_obj.profile.profile_pic.url }}" class="rounded-circle mb-2" style="width: 80px; height: 80px;">
-                                <h5 class="card-title">{{ user_obj.username }}</h5>
-                                <p class="card-text small">{{ user_obj.profile.bio|truncatechars:50 }}</p>
-                                <div class="d-grid gap-2">
-                                    <a href="{% url 'send-friend-request' user_obj.id %}" class="btn btn-primary">
-                                        <i class="fas fa-user-plus"></i> Add Friend
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+<div class="container">
+    <h2>Search Users</h2>
+
+    <form method="get" class="mb-4">
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    {% if users %}
+        <div class="card-deck">
+            {% for user in users %}
+                <div class="card mb-3" style="max-width: 18rem;">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ user.username }}</h5>
+                        <p class="card-text">{{ user.email }}</p>
+                        
+                        {% with status=user_statuses|get_item:user.id %}
+                            {% if status == 'friend' %}
+                                <span class="text-success">Already friends</span>
+                                <a href="{% url 'start_conversation' user.id %}" class="btn btn-sm btn-outline-primary mt-2">Message</a>
+                            {% elif status == 'pending_sent' %}
+                                <span class="text-warning">Friend request sent</span>
+                            {% elif status == 'pending_received' %}
+                                <span class="text-info">Friend request received</span>
+                                <a href="{% url 'notifications' %}" class="btn btn-sm btn-outline-info mt-2">View Request</a>
+                            {% else %}
+                            <a href="{% url 'send_friend_request' user.id %}" class="btn btn-sm btn-primary">Add Friend</a>
+                            {% endif %}
+                        {% endwith %}
                     </div>
-                {% endfor %}
-            </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        {% if form.cleaned_data.search_query %}
+            <p>No users found matching "{{ form.cleaned_data.search_query }}"</p>
         {% else %}
-            {% if query %}
-                <p class="text-muted">No users found matching "{{ query }}"</p>
-            {% else %}
-                <p class="text-muted">Search for users by typing in the search box above.</p>
-            {% endif %}
+            <p>Enter a search term to find users</p>
         {% endif %}
-    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Set Up Two-Factor Authentication</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5>Instructions:</h5>
+                        <ol>
+                            <li>Download an authenticator app like Google Authenticator, Microsoft Authenticator, or Authy on your mobile device.</li>
+                            <li>Scan the QR code below with your authenticator app.</li>
+                            <li>Enter the 6-digit code shown in your app to verify setup.</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="text-center mb-4">
+                        <h5>Scan this QR code with your authenticator app</h5>
+                        <div class="my-3">
+                            <img src="data:image/png;base64,{{ qr_code }}" alt="TOTP QR Code" class="img-fluid">
+                        </div>
+                        <div class="mt-2 mb-4">
+                            <p><strong>Or manually enter this code:</strong></p>
+                            <div class="bg-light p-2 mb-3 text-monospace">{{ secret }}</div>
+                            <p class="text-muted small">Account: {{ user.email }}</p>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="verification_code" class="form-label">Enter the 6-digit code from your app</label>
+                            <input type="text" name="verification_code" id="verification_code" 
+                                class="form-control form-control-lg text-center" maxlength="6" 
+                                inputmode="numeric" pattern="[0-9]*" required autofocus>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">Verify and Enable 2FA</button>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'profile' %}" class="btn btn-link">Back to Profile</a>
+                        <div class="text-muted">
+                            <small>Keep this code safe. You'll need it if you lose your device.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

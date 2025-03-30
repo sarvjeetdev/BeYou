@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build: ./backend
@@ -9,12 +11,46 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      - DB_HOST=db  
+      - DB_NAME=beyouDB
+      - DB_USER=godsknights 
+      - DB_PASSWORD=JaiHind&1950
+    depends_on:
+      db:
+        condition: service_healthy
     dns:
       - 8.8.8.8   # Google's public DNS
       - 1.1.1.1   # Cloudflare's DNS
+    command: >
+            sh -c "sleep 20 &&
+                  python manage.py migrate &&
+                  python manage.py loaddata categories &&
+                  python manage.py collectstatic --noinput &&
+                  gunicorn social_media.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
+
+
+
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: beyouDB
+      MYSQL_USER: godsknights
+      MYSQL_PASSWORD: JaiHind&1950
+      MYSQL_ROOT_PASSWORD: jeet  
+    ports:
+      - "3307:3306"  # Host machine uses 3307, but inside Docker use 3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nginx:
-    build: ./nginx      # Points to Dockerfile in ./nginx/
+    build: ./nginx
     container_name: nginx_proxy
     restart: always
     ports:
@@ -24,4 +60,4 @@ services:
       - backend
 
 volumes:
-  mongo_data:
+  mysql_data:
