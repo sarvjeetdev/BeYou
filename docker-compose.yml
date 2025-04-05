@@ -100,6 +100,7 @@ services:
             python manage.py migrate &&
             python manage.py loaddata categories &&
             python manage.py collectstatic --noinput &&
+            python create_superuser.py &&
             gunicorn social_media.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
 
   db:
