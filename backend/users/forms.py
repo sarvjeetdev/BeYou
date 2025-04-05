@@ -1,6 +1,7 @@
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm,AuthenticationForm
 from django import forms
 from .models import CustomUser, Report
+from captcha.fields import CaptchaField
 
 class UserReportForm(forms.ModelForm):
     class Meta:
@@ -113,6 +114,41 @@ class UserRegisterForm(UserCreationForm):
         # Add Bootstrap classes to form fields
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
+###############################################
+
+# class RegisterWithCaptchaForm(UserRegisterForm):
+#     captcha = CaptchaField()
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.fields['captcha'].widget.attrs.update({'class': 'form-control'})
+
+
+from django.core.exceptions import ValidationError
+
+class RegisterWithCaptchaForm(UserRegisterForm):
+    captcha = CaptchaField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['captcha'].widget.attrs.update({'class': 'form-control'})
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            raise ValidationError("This email is already registered.")
+        return email
+
+
+
+
+
+# class AdminLoginWithCaptchaForm(AuthenticationForm):
+#     captcha = CaptchaField()
+
+#######################################################
+
+
 
 class UserUpdateForm(forms.ModelForm):
     class Meta:
@@ -181,3 +217,13 @@ class MessageForm(forms.Form):
                     raise forms.ValidationError("Unsupported file type. Only images and videos are allowed.")
         
         return cleaned_data
+
+
+
+############
+
+
+class LoginWithCaptchaForm(forms.Form):
+    username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(max_length=150,widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    captcha = CaptchaField()

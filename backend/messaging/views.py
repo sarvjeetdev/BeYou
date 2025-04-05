@@ -512,3 +512,33 @@ def view_media(request, message_id):
         'message': message,
         'conversation': message.conversation
     })
+
+
+
+
+
+# from django.http import FileResponse, Http404
+# from django.contrib.auth.decorators import login_required
+# from messaging.models import Message, ConversationParticipant
+
+# @login_required
+# def view_media(request, message_id):
+#     # Get message and preload conversation
+#     message = get_object_or_404(
+#         Message.objects.select_related('conversation'),
+#         id=message_id
+#     )
+
+#     # Check user is a participant
+#     if not ConversationParticipant.objects.filter(
+#         conversation=message.conversation,
+#         user=request.user
+#     ).exists():
+#         raise Http404("Unauthorized access.")
+
+#     # Confirm it's a media message
+#     if not message.is_media_message:
+#         raise Http404("No media in this message.")
+
+#     # Return file securely
+#     return FileResponse(message.media.open(), content_type=message.media.file.content_type)

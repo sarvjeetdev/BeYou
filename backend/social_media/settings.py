@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'friends',
     'messaging',
     'marketplace',
+    'captcha',
 ]
 
 MIDDLEWARE = [
@@ -70,12 +71,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'social_media.wsgi.application'
 
 load_dotenv()  # Load environment variables
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'beyouDB'),
-        'USER': os.environ.get('DB_USER', 'godsknights'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'JaiHind&1950'),
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
         'HOST': os.environ.get('DB_HOST', 'db'),  # Use "db" (same as service name in Docker)
         'PORT': '3306',
         'OPTIONS': {
@@ -116,8 +118,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # Encryption key for message encryption (generate a secure key for production)
-ENCRYPTION_KEY = 'RgDKgOvXX-xjlH-yA_NQhJk07lRdJ_CWpQ7a477kFVY='
-
+ENCRYPTION_KEY =os.getenv("ENCRYPTION_KEY")
 # Login URLs
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'profile'

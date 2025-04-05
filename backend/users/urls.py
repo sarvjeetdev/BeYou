@@ -8,7 +8,9 @@ urlpatterns = [
     path('', views.landing_page, name='landing_page'), 
     path('profile/totp-setup/', views.totp_setup, name='totp_setup'),
     path('profile/<str:username>/', views.profile, name='profile'),
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html', redirect_field_name='next',next_page='profile'),name='login'),
+    #path('login/', auth_views.LoginView.as_view(template_name='users/login.html', redirect_field_name='next',next_page='profile'),name='login'),
+    path('login/', views.login_view, name='login'),
+
     path('logout/', views.logout_view, name='logout'),
     path('verification/request/', views.verification_request, name='verification_request'),
     path('verification/pending/', views.verification_pending, name='verification_pending'),

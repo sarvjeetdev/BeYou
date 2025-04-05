@@ -5,6 +5,7 @@ from django.utils import timezone
 
 class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=15, unique=True)
+    email = models.EmailField(unique=True, db_index=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     bio = models.TextField(max_length=500, blank=True, null=True)
     is_verified = models.BooleanField(default=False)

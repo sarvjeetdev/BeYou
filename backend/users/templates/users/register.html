@@ -11,6 +11,7 @@
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
+                        
                         <div class="mb-3">
                             <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
                             {{ form.username }}
@@ -20,7 +21,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
                             {{ form.email }}
@@ -30,7 +31,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number</label>
                             {{ form.phone_number }}
@@ -40,7 +41,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
                             {{ form.password1 }}
@@ -50,7 +51,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password</label>
                             {{ form.password2 }}
@@ -60,7 +61,18 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <!-- ✅ Captcha Field -->
+                        <div class="mb-3">
+                            <label for="{{ form.captcha.id_for_label }}" class="form-label">Captcha</label>
+                            {{ form.captcha }}
+                            {% if form.captcha.errors %}
+                                <div class="text-danger">
+                                    {{ form.captcha.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <button type="submit" class="btn btn-primary">Register</button>
                     </form>
                 </div>

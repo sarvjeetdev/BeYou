@@ -12,6 +12,9 @@ import pyotp
 import qrcode
 import base64
 from io import BytesIO
+from .forms import LoginWithCaptchaForm,RegisterWithCaptchaForm
+
+
 
 @login_required
 def generate_keys(request):
@@ -440,15 +443,17 @@ def register(request):
         return redirect('profile')
     
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        form = RegisterWithCaptchaForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
             messages.success(request, f'Account created for {user.username}! You are now logged in.')
             return redirect('profile')
     else:
-        form = UserRegisterForm()
+        form = RegisterWithCaptchaForm()
+
     return render(request, 'users/register.html', {'form': form})
+
 
 @login_required
 def profile(request, username=None):
@@ -501,24 +506,82 @@ def profile(request, username=None):
     
     return render(request, 'users/profile.html', context)
 
+
+
+
+
+
+############################## UPDATING LOGIN ###########################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def login_view(request):
+#     if request.user.is_authenticated:
+#         return redirect('profile')
+    
+#     if request.method == 'POST':
+#         username = request.POST.get('username')
+#         password = request.POST.get('password')
+        
+#         user = authenticate(request, username=username, password=password)
+#         if user:
+#             login(request, user)
+#             messages.success(request, 'You have successfully logged in!')
+#             return redirect('profile')  # This should redirect to your profile page
+#         else:
+#             messages.error(request, 'Invalid username or password.')
+    
+#     return render(request, 'users/login.html')
+
+
+
+
+
+
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('profile')
+
+    form = LoginWithCaptchaForm(request.POST or None)
     
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        
-        user = authenticate(request, username=username, password=password)
-        if user:
-            login(request, user)
-            messages.success(request, 'You have successfully logged in!')
-            return redirect('profile')  # This should redirect to your profile page
-        else:
-            messages.error(request, 'Invalid username or password.')
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            user = authenticate(request, username=username, password=password)
+            if user:
+                login(request, user)
+                messages.success(request, 'You have successfully logged in!')
+                return redirect('profile')
+            else:
+                messages.error(request, 'Invalid username or password.')
     
-    return render(request, 'users/login.html')
+    return render(request, 'users/login.html', {'form': form})
 
+
+
+
+
+
+
+
+
+
+
+##########################################################################################################
 @login_required
 def logout_view(request):
     logout(request)
@@ -805,3 +868,7 @@ def password_reset_confirm(request):
     except (CustomUser.DoesNotExist, PasswordResetRequest.DoesNotExist):
         messages.error(request, "Invalid password reset session.")
         return redirect('password_reset_request')
+
+
+
+############################################  

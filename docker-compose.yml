@@ -1,3 +1,77 @@
+# version: '3.8'
+
+# services:
+#   backend:
+#     build: ./backend
+#     container_name: django_backend
+#     restart: always
+#     volumes:
+#       - ./backend:/app
+#       - static_volume:/app/static
+#       - media_volume:/app/media
+#     ports:
+#       - "8000:8000"
+#     env_file:
+#       - .env
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - DB_HOST=db  
+#       - DB_NAME=beyouDB
+#       - DB_USER=godsknights 
+#       - DB_PASSWORD=JaiHind&1950 
+#       - SECRET_KEY=django-insecure-hs88%e(wz^$8%b#jh=9)q9#k!cimzggveahcw5#l72%1sfv6#x
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#     dns:
+#       - 8.8.8.8   # Google's public DNS
+#       - 1.1.1.1   # Cloudflare's DNS
+#     command: >
+#             sh -c "sleep 20 &&
+#                   python manage.py migrate &&
+#                   python manage.py loaddata categories &&
+#                   python manage.py collectstatic --noinput &&
+#                   gunicorn social_media.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
+
+
+
+#   db:
+#     image: mysql:8.0
+#     container_name: mysql_db
+#     restart: always
+#     environment:
+#       MYSQL_DATABASE: beyouDB
+#       MYSQL_USER: godsknights
+#       MYSQL_PASSWORD: JaiHind&1950
+#       MYSQL_ROOT_PASSWORD: jeet  
+#     ports:
+#       - "3307:3306"  # Host machine uses 3307, but inside Docker use 3306
+#     volumes:
+#       - mysql_data:/var/lib/mysql
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+#   nginx:
+#     build: ./nginx
+#     container_name: nginx_proxy
+#     restart: always
+#     volumes:
+#       - static_volume:/app/static
+#       - media_volume:/app/media
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     depends_on:
+#       - backend
+
+# volumes:
+#   mysql_data:
+#   static_volume:
+#   media_volume:
+
 version: '3.8'
 
 services:
@@ -15,37 +89,30 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - DB_HOST=db  
-      - DB_NAME=beyouDB
-      - DB_USER=godsknights 
-      - DB_PASSWORD=JaiHind&1950 
-      - SECRET_KEY=django-insecure-hs88%e(wz^$8%b#jh=9)q9#k!cimzggveahcw5#l72%1sfv6#x
     depends_on:
       db:
         condition: service_healthy
     dns:
-      - 8.8.8.8   # Google's public DNS
-      - 1.1.1.1   # Cloudflare's DNS
+      - 8.8.8.8
+      - 1.1.1.1
     command: >
-            sh -c "sleep 20 &&
-                  python manage.py migrate &&
-                  python manage.py loaddata categories &&
-                  python manage.py collectstatic --noinput &&
-                  gunicorn social_media.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
-
-
+      sh -c "sleep 20 &&
+            python manage.py migrate &&
+            python manage.py loaddata categories &&
+            python manage.py collectstatic --noinput &&
+            gunicorn social_media.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
 
   db:
     image: mysql:8.0
     container_name: mysql_db
     restart: always
     environment:
-      MYSQL_DATABASE: beyouDB
-      MYSQL_USER: godsknights
-      MYSQL_PASSWORD: JaiHind&1950
-      MYSQL_ROOT_PASSWORD: jeet  
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "3307:3306"  # Host machine uses 3307, but inside Docker use 3306
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -61,6 +128,8 @@ services:
     volumes:
       - static_volume:/app/static
       - media_volume:/app/media
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # Mount certs from host
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro  # Optional auth
     ports:
       - "80:80"
       - "443:443"
