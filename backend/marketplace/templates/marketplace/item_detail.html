@@ -47,6 +47,14 @@
                         {% else %}
                             <a href="{% url 'add_to_cart' item.id %}" class="btn btn-lg btn-primary">Add to Cart</a>
                         {% endif %}
+
+                        {% if item.seller != request.user %}
+                            <div class="mt-3">
+                                <a href="{% url 'report_item' item.id %}" class="btn btn-warning">
+                                    <i class="fas fa-flag"></i> Report Item
+                                </a>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

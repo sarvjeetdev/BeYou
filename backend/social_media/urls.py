@@ -19,6 +19,7 @@ from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
 from users.views import landing_page
+from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,6 +28,7 @@ urlpatterns = [
     path('messaging/', include('messaging.urls')),
     path('marketplace/', include('marketplace.urls')),
     path('', landing_page, name='landing_page'),
+    path('', RedirectView.as_view(url='/users/profile/', permanent=False), name='root'),
 ]
 
 # Add media serving for development

@@ -49,6 +49,8 @@ class OTP(models.Model):
     def __str__(self):
         return f"OTP for {self.user.username} - {self.purpose}"
 
+# In users/models.py - update the UserKey model
+# In users/models.py, update the UserKey model
 
 class UserKey(models.Model):
     KEY_TYPE_CHOICES = [
@@ -58,24 +60,20 @@ class UserKey(models.Model):
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='keys')
     public_key = models.TextField()
+    public_key_hash = models.CharField(max_length=64, db_index=True, unique=True, null=True)
     key_type = models.CharField(max_length=20, choices=KEY_TYPE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.key_type.capitalize()} Key for {self.user.username}"
-
-
-class UserFollow(models.Model):
-    follower = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='following')
-    followee = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='followers')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('follower', 'followee')
-
-    def __str__(self):
-        return f"{self.follower.username} follows {self.followee.username}"
-
+    
+    def save(self, *args, **kwargs):
+        # Generate a hash of the public key for easier lookups
+        if not self.public_key_hash and self.public_key:
+            import hashlib
+            self.public_key_hash = hashlib.sha256(self.public_key.encode()).hexdigest()
+        super().save(*args, **kwargs)
 
 class UserBlock(models.Model):
     blocker = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='blocking')
@@ -101,3 +99,54 @@ class PasswordResetRequest(models.Model):
     
     def is_valid(self):
         return not self.is_used and self.expires_at > timezone.now()
+    
+class Report(models.Model):
+    REPORT_TYPES = [
+        ('user', 'User Report'),
+        ('message', 'Message Report'),
+        ('item', 'Marketplace Item Report'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('investigating', 'Under Investigation'),
+        ('resolved', 'Resolved'),
+        ('dismissed', 'Dismissed'),
+    ]
+    
+    reporter = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='submitted_reports')
+    reported_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reports_against', null=True, blank=True)
+    reported_message = models.UUIDField(null=True, blank=True)  # Store the message ID
+    reported_item = models.UUIDField(null=True, blank=True)  # Store the item ID
+    
+    report_type = models.CharField(max_length=10, choices=REPORT_TYPES)
+    reason = models.TextField()
+    additional_details = models.TextField(blank=True, null=True)
+    screenshot = models.ImageField(upload_to='report_evidence/', null=True, blank=True)
+    
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True, null=True)
+    action_taken = models.CharField(max_length=255, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        if self.report_type == 'user':
+            return f"User Report: {self.reporter.username} reported {self.reported_user.username}"
+        elif self.report_type == 'message':
+            return f"Message Report by {self.reporter.username}"
+        else:
+            return f"Item Report by {self.reporter.username}"
+        
+ # In users/models.py
+class UserFollow(models.Model):
+    follower = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='following')
+    followee = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='followers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('follower', 'followee')
+
+    def __str__(self):
+        return f"{self.follower.username} follows {self.followee.username}"     

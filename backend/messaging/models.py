@@ -52,6 +52,9 @@ class ConversationParticipant(models.Model):
         return f"{self.user.username} in {self.conversation}"
 
 
+# In messaging/models.py - update the Message model
+# In messaging/models.py, update the Message model
+
 class Message(models.Model):
     MEDIA_TYPES = (
         ('none', 'None'),
@@ -67,6 +70,10 @@ class Message(models.Model):
     media_type = models.CharField(max_length=10, choices=MEDIA_TYPES, default='none')
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    
+    # Add fields for message signing and E2E encryption
+    signature = models.TextField(blank=True, null=True)  # Sender's signature
+    is_encrypted = models.BooleanField(default=False)  # Whether the message is E2E encrypted
     
     def encrypt_message(self, content):
         if content:
@@ -101,6 +108,15 @@ class Message(models.Model):
         return f"Message from {self.sender.username} in {self.conversation}"
 
 
+# Add a new model for E2E encrypted message content
+class EncryptedMessageContent(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='encrypted_contents')
+    recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_encrypted_messages')
+    encrypted_content = models.TextField()  # Content encrypted with recipient's public key
+    
+    class Meta:
+        unique_together = ('message', 'recipient')
+
 class UserConversationKey(models.Model):
     """Store encryption keys for each user in a conversation"""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='conversation_keys')
@@ -109,3 +125,46 @@ class UserConversationKey(models.Model):
     
     class Meta:
         unique_together = ('user', 'conversation')
+
+# In messaging/models.py - add a new model
+
+class UserMessageKey(models.Model):
+    """Store individual encrypted message content for each recipient"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='message_keys')
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='recipient_keys')
+    encrypted_content = models.TextField()  # Content encrypted with recipient's public key
+    
+    class Meta:
+        unique_together = ('user', 'message')
+        
+    def __str__(self):
+        return f"Encrypted message for {self.user.username}"
+        
+    def decrypt_with_private_key(self, private_key_pem):
+        """Decrypt the message content with the recipient's private key"""
+        try:
+            from cryptography.hazmat.primitives import hashes, serialization
+            from cryptography.hazmat.primitives.asymmetric import padding
+            from cryptography.hazmat.backends import default_backend
+            
+            # Load the private key
+            private_key = serialization.load_pem_private_key(
+                private_key_pem.encode(),
+                password=None,
+                backend=default_backend()
+            )
+            
+            # Decrypt the content
+            decrypted_content = private_key.decrypt(
+                bytes.fromhex(self.encrypted_content),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            
+            return decrypted_content.decode()
+        except Exception as e:
+            print(f"Error decrypting message: {e}")
+            return None

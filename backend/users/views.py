@@ -5,8 +5,10 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.core.cache import cache
 from django.http import HttpResponse
-from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm, VerificationForm, PasswordResetRequestForm, PasswordResetVerifyForm, SetNewPasswordForm
-from .models import CustomUser, PasswordResetRequest
+from django.db.models import Q
+from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm, VerificationForm, PasswordResetRequestForm, PasswordResetVerifyForm, SetNewPasswordForm, UserReportForm, MessageReportForm, ItemReportForm
+from .models import UserBlock  # Import UserBlock model
+from .models import CustomUser, PasswordResetRequest, Report, UserKey
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.urls import reverse
@@ -15,7 +17,436 @@ import qrcode
 import base64
 from io import BytesIO
 
+# In users/views.py, update or add this function
+
+@login_required
+def generate_keys(request):
+    """Generate signing and encryption keys for the user"""
+    from messaging.utils import generate_key_pair
+    
+    if request.method == 'POST':
+        # Generate signing key pair
+        signing_keys = generate_key_pair()
+        UserKey.objects.create(
+            user=request.user,
+            public_key=signing_keys['public_key'],
+            key_type='signing',
+            is_active=True
+        )
+        
+        # Generate encryption key pair
+        encryption_keys = generate_key_pair()
+        UserKey.objects.create(
+            user=request.user,
+            public_key=encryption_keys['public_key'],
+            key_type='encryption',
+            is_active=True
+        )
+        
+        # In a real app, you'd send the private keys to the client securely
+        # and never store them on the server
+        # For this demo, we'll store them in the session temporarily
+        request.session['signing_private_key'] = signing_keys['private_key']
+        request.session['encryption_private_key'] = encryption_keys['private_key']
+        
+        messages.success(request, "Cryptographic keys generated successfully. Download your private keys for safekeeping.")
+        return redirect('profile')
+    
+    return render(request, 'users/generate_keys.html')
+
+@login_required
+def download_private_keys(request):
+    """Allow user to download their private keys"""
+    signing_private_key = request.session.get('signing_private_key')
+    encryption_private_key = request.session.get('encryption_private_key')
+    
+    if not signing_private_key or not encryption_private_key:
+        messages.error(request, "No private keys found in your session. Please generate new keys.")
+        return redirect('generate_keys')
+    
+    # Clear keys from session after viewing
+    if request.method == 'POST':
+        if 'signing_private_key' in request.session:
+            del request.session['signing_private_key']
+        if 'encryption_private_key' in request.session:
+            del request.session['encryption_private_key']
+        messages.success(request, "Private keys have been cleared from your session.")
+        return redirect('profile')
+    
+    context = {
+        'signing_private_key': signing_private_key,
+        'encryption_private_key': encryption_private_key,
+    }
+    
+    return render(request, 'users/download_private_keys.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_reports_list(request):
+    """Admin view to list all reports"""
+    # Get reports by status
+    pending_reports = Report.objects.filter(status='pending').order_by('-created_at')
+    investigating_reports = Report.objects.filter(status='investigating').order_by('-created_at')
+    resolved_reports = Report.objects.filter(status__in=['resolved', 'dismissed']).order_by('-updated_at')[:50]  # Show last 50
+    
+    # Count by type
+    user_reports_count = Report.objects.filter(report_type='user').count()
+    message_reports_count = Report.objects.filter(report_type='message').count()
+    item_reports_count = Report.objects.filter(report_type='item').count()
+    
+    return render(request, 'users/admin_reports_list.html', {
+        'pending_reports': pending_reports,
+        'investigating_reports': investigating_reports,
+        'resolved_reports': resolved_reports,
+        'user_reports_count': user_reports_count,
+        'message_reports_count': message_reports_count,
+        'item_reports_count': item_reports_count,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_process_report(request, report_id):
+    """Admin view to process a report"""
+    report = get_object_or_404(Report, id=report_id)
+    
+    # Get the reported content based on report type
+    reported_content = None
+    if report.report_type == 'user':
+        reported_content = report.reported_user
+    elif report.report_type == 'message':
+        from messaging.models import Message
+        try:
+            reported_content = Message.objects.get(id=report.reported_message)
+        except Message.DoesNotExist:
+            reported_content = "Message not found or deleted"
+    elif report.report_type == 'item':
+        from marketplace.models import Item
+        try:
+            reported_content = Item.objects.get(id=report.reported_item)
+        except Item.DoesNotExist:
+            reported_content = "Item not found or deleted"
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        admin_notes = request.POST.get('admin_notes', '')
+        
+        report.admin_notes = admin_notes
+        
+        if action == 'investigate':
+            report.status = 'investigating'
+            report.save()
+            messages.info(request, f"Report marked as under investigation.")
+            
+        elif action == 'dismiss':
+            report.status = 'dismissed'
+            report.action_taken = 'No action needed'
+            report.save()
+            messages.success(request, f"Report has been dismissed.")
+            
+        elif action == 'resolve':
+            report.status = 'resolved'
+            
+            # Take specific actions based on resolution type
+            resolution_type = request.POST.get('resolution_type')
+            
+            if resolution_type == 'warning':
+                report.action_taken = f"Warning sent to {report.reported_user.username}"
+                # Here you could implement sending a warning notification
+                
+            elif resolution_type == 'ban_temp':
+                days = request.POST.get('ban_days', 7)
+                report.action_taken = f"Temporary ban ({days} days) for {report.reported_user.username}"
+                
+                # Set user as inactive
+                reported_user = report.reported_user
+                reported_user.is_active = False
+                reported_user.save()
+                
+                # You could store ban info in a new model for reactivation later
+                
+            elif resolution_type == 'ban_perm':
+                report.action_taken = f"Permanent ban for {report.reported_user.username}"
+                
+                # Set user as inactive
+                reported_user = report.reported_user
+                reported_user.is_active = False
+                reported_user.save()
+                
+            elif resolution_type == 'delete_content':
+                report.action_taken = "Reported content deleted"
+                
+                # Delete the reported content based on type
+                if report.report_type == 'message':
+                    from messaging.models import Message
+                    try:
+                        message = Message.objects.get(id=report.reported_message)
+                        message.delete()
+                    except Message.DoesNotExist:
+                        pass
+                        
+                elif report.report_type == 'item':
+                    from marketplace.models import Item
+                    try:
+                        item = Item.objects.get(id=report.reported_item)
+                        item.status = 'inactive'  # Or delete if preferred
+                        item.save()
+                    except Item.DoesNotExist:
+                        pass
+            
+            report.save()
+            messages.success(request, f"Report has been resolved.")
+            
+        return redirect('admin_reports_list')
+    
+    return render(request, 'users/admin_process_report.html', {
+        'report': report,
+        'reported_content': reported_content
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_user_management(request):
+    """Admin view to manage users"""
+    # Get users with reports against them
+    users_with_reports = CustomUser.objects.filter(
+        reports_against__isnull=False
+    ).distinct()
+    
+    # Get banned users
+    banned_users = CustomUser.objects.filter(is_active=False)
+    
+    # Get recent signups
+    recent_users = CustomUser.objects.filter(
+        date_joined__gte=timezone.now() - timezone.timedelta(days=7)
+    ).order_by('-date_joined')
+    
+    return render(request, 'users/admin_user_management.html', {
+        'users_with_reports': users_with_reports,
+        'banned_users': banned_users,
+        'recent_users': recent_users
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_ban_user(request, user_id):
+    """Admin view to ban a user"""
+    user_to_ban = get_object_or_404(CustomUser, id=user_id)
+    
+    # Prevent banning staff or self
+    if user_to_ban.is_staff or user_to_ban == request.user:
+        messages.error(request, "You cannot ban staff members or yourself.")
+        return redirect('admin_user_management')
+    
+    if request.method == 'POST':
+        ban_type = request.POST.get('ban_type')
+        reason = request.POST.get('reason', '')
+        
+        if ban_type == 'temp':
+            days = int(request.POST.get('ban_days', 7))
+            # Here you could implement a temp ban system with auto-reactivation
+            # For now, just set as inactive
+            user_to_ban.is_active = False
+            user_to_ban.save()
+            
+            messages.success(request, f"{user_to_ban.username} has been temporarily banned for {days} days.")
+            
+        elif ban_type == 'perm':
+            user_to_ban.is_active = False
+            user_to_ban.save()
+            
+            messages.success(request, f"{user_to_ban.username} has been permanently banned.")
+        
+        return redirect('admin_user_management')
+    
+    return render(request, 'users/admin_ban_user.html', {'user_to_ban': user_to_ban})
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_unban_user(request, user_id):
+    """Admin view to unban a user"""
+    user_to_unban = get_object_or_404(CustomUser, id=user_id, is_active=False)
+    
+    if request.method == 'POST':
+        user_to_unban.is_active = True
+        user_to_unban.save()
+        
+        messages.success(request, f"{user_to_unban.username} has been unbanned and can now log in again.")
+        return redirect('admin_user_management')
+    
+    return render(request, 'users/admin_unban_user.html', {'user_to_unban': user_to_unban})
+
+@login_required
+def report_user(request, user_id):
+    reported_user = get_object_or_404(CustomUser, id=user_id)
+    
+    # Prevent self-reporting
+    if reported_user == request.user:
+        messages.error(request, "You cannot report yourself.")
+        return redirect('profile')
+    
+    if request.method == 'POST':
+        form = UserReportForm(request.POST, request.FILES)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.reporter = request.user
+            report.reported_user = reported_user
+            report.report_type = 'user'
+            report.save()
+            
+            messages.success(request, f"Your report against {reported_user.username} has been submitted and will be reviewed by our team.")
+            return redirect('friend_list')
+    else:
+        form = UserReportForm()
+    
+    return render(request, 'users/report_user.html', {'form': form, 'reported_user': reported_user})
+
+@login_required
+def report_message(request, message_id):
+    from messaging.models import Message
+    
+    # Validate message exists but don't need to load full content
+    message = get_object_or_404(Message, id=message_id)
+    conversation = message.conversation
+    
+    # Verify user is part of the conversation
+    from messaging.models import ConversationParticipant
+    participant = get_object_or_404(ConversationParticipant, conversation=conversation, user=request.user)
+    
+    if request.method == 'POST':
+        form = MessageReportForm(request.POST, request.FILES)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.reporter = request.user
+            report.reported_user = message.sender
+            report.reported_message = message.id
+            report.report_type = 'message'
+            report.save()
+            
+            messages.success(request, "Your report has been submitted and will be reviewed by our team.")
+            return redirect('view_conversation', conversation_id=conversation.id)
+    else:
+        form = MessageReportForm()
+    
+    return render(request, 'users/report_message.html', {'form': form, 'message': message})
+
+@login_required
+def report_item(request, item_id):
+    from marketplace.models import Item
+    
+    item = get_object_or_404(Item, id=item_id)
+    
+    if request.method == 'POST':
+        form = ItemReportForm(request.POST, request.FILES)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.reporter = request.user
+            report.reported_user = item.seller
+            report.reported_item = item.id
+            report.report_type = 'item'
+            report.save()
+            
+            messages.success(request, f"Your report for item '{item.name}' has been submitted and will be reviewed by our team.")
+            return redirect('item_detail', item_id=item.id)
+    else:
+        form = ItemReportForm()
+    
+    return render(request, 'users/report_item.html', {'form': form, 'item': item})
+
+@login_required
+def block_user(request, user_id):
+    user_to_block = get_object_or_404(CustomUser, id=user_id)
+    
+    # Prevent self-blocking
+    if user_to_block == request.user:
+        messages.error(request, "You cannot block yourself.")
+        return redirect('profile')
+    
+    # Check if already blocked
+    if UserBlock.objects.filter(blocker=request.user, blocked_user=user_to_block).exists():
+        messages.info(request, f"You have already blocked {user_to_block.username}.")
+        return redirect('friend_list')
+    
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '')
+        
+        # Check if they are friends before blocking
+        from django.db.models import Q
+        from friends.models import FriendRequest
+        were_friends = FriendRequest.objects.filter(
+            (Q(sender=request.user) & Q(receiver=user_to_block) & Q(status='accepted')) |
+            (Q(sender=user_to_block) & Q(receiver=request.user) & Q(status='accepted'))
+        ).exists()
+        
+        # Store this information in the session
+        request.session[f'were_friends_{user_id}'] = were_friends
+        
+        # Create block record
+        UserBlock.objects.create(
+            blocker=request.user,
+            blocked_user=user_to_block,
+            reason=reason
+        )
+        
+        # Remove any existing friend relationship
+        FriendRequest.objects.filter(
+            (Q(sender=request.user) & Q(receiver=user_to_block)) |
+            (Q(sender=user_to_block) & Q(receiver=request.user))
+        ).delete()
+        
+        messages.success(request, f"You have blocked {user_to_block.username}.")
+        return redirect('blocked_users')
+    
+    return render(request, 'users/block_user.html', {'user_to_block': user_to_block})
+
+@login_required
+def unblock_user(request, user_id):
+    user_to_unblock = get_object_or_404(CustomUser, id=user_id)
+    block = get_object_or_404(UserBlock, blocker=request.user, blocked_user=user_to_unblock)
+    
+    # Check if they were friends before blocking (we'll need to store this information)
+    were_friends = request.session.get(f'were_friends_{user_id}', False)
+    
+    if request.method == 'POST':
+        # Delete the block record
+        block.delete()
+        
+        # Check if the user wants to restore friendship
+        restore_friendship = request.POST.get('restore_friendship') == 'yes'
+        
+        if restore_friendship:
+            # Create a new accepted friend request
+            from friends.models import FriendRequest
+            FriendRequest.objects.create(
+                sender=request.user,
+                receiver=user_to_unblock,
+                status='accepted'
+            )
+            messages.success(request, f"You have unblocked {user_to_unblock.username} and restored your friendship.")
+        else:
+            messages.success(request, f"You have unblocked {user_to_unblock.username}.")
+        
+        # Clear the session variable
+        if f'were_friends_{user_id}' in request.session:
+            del request.session[f'were_friends_{user_id}']
+            
+        return redirect('blocked_users')
+    
+    return render(request, 'users/unblock_user.html', {
+        'user_to_unblock': user_to_unblock,
+        'were_friends': were_friends
+    })
+
+@login_required
+def blocked_users(request):
+    blocks = UserBlock.objects.filter(blocker=request.user).select_related('blocked_user')
+    return render(request, 'users/blocked_users.html', {'blocks': blocks})
+
+# In users/views.py - update the register function
+
 def register(request):
+    if request.user.is_authenticated:
+        return redirect('profile')
+    
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
@@ -27,10 +458,30 @@ def register(request):
         form = UserRegisterForm()
     return render(request, 'users/register.html', {'form': form})
 
-
 @login_required
-def profile(request):
-    if request.method == 'POST':
+def profile(request, username=None):
+    """View for viewing own profile or other users' profiles"""
+    if username:
+        # Viewing someone else's profile
+        user = get_object_or_404(CustomUser, username=username)
+    else:
+        # Viewing own profile
+        user = request.user
+    
+    # Check if user is viewing someone else's profile
+    is_own_profile = (user == request.user)
+    
+    # Check if this user is blocked
+    is_blocked = False
+    if not is_own_profile:
+        is_blocked = UserBlock.objects.filter(blocker=request.user, blocked_user=user).exists()
+    
+    # Check if user has cryptographic keys
+    has_keys = False
+    if is_own_profile:
+        has_keys = UserKey.objects.filter(user=request.user, is_active=True).count() >= 2
+    
+    if request.method == 'POST' and is_own_profile:
         u_form = UserUpdateForm(request.POST, instance=request.user)
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if u_form.is_valid() and p_form.is_valid():
@@ -39,14 +490,29 @@ def profile(request):
             messages.success(request, 'Your profile has been updated!')
             return redirect('profile')
     else:
-        u_form = UserUpdateForm(instance=request.user)
-        p_form = ProfileUpdateForm(instance=request.user)
-
-    context = {'u_form': u_form, 'p_form': p_form}
+        # Only initialize forms if viewing own profile
+        if is_own_profile:
+            u_form = UserUpdateForm(instance=request.user)
+            p_form = ProfileUpdateForm(instance=request.user)
+        else:
+            u_form = None
+            p_form = None
+    
+    context = {
+        'user_profile': user,
+        'is_own_profile': is_own_profile,
+        'is_blocked': is_blocked,
+        'has_keys': has_keys,
+        'u_form': u_form,
+        'p_form': p_form
+    }
+    
     return render(request, 'users/profile.html', context)
 
-
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('profile')
+    
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -117,21 +583,32 @@ def verification_pending(request):
 @user_passes_test(lambda u: u.is_staff)
 def admin_verification_list(request):
     """Admin view to list verification requests"""
+    # Get pending verification requests - users who have submitted documents but aren't verified yet
     pending_requests = CustomUser.objects.filter(
         verification_status='pending',
-        id_document__isnull=False
+        id_document__isnull=False,
+        verification_reason__isnull=False
     ).order_by('verification_submitted_at')
     
+    # Get processed requests - users who have been approved or rejected
     processed_requests = CustomUser.objects.filter(
-        verification_status__in=['approved', 'rejected'],
-        id_document__isnull=False
+        verification_status__in=['approved', 'rejected']
     ).order_by('-verification_processed_at')[:50]  # Show last 50
+    
+    # Get users who haven't submitted verification yet - no document or no reason
+    not_submitted_users = CustomUser.objects.filter(
+        Q(id_document__isnull=True) | 
+        Q(verification_reason__isnull=True) |
+        Q(verification_reason='')
+    ).exclude(
+        verification_status__in=['approved', 'rejected']
+    ).exclude(is_staff=True).order_by('date_joined')
     
     return render(request, 'users/admin_verification_list.html', {
         'pending_requests': pending_requests,
-        'processed_requests': processed_requests
+        'processed_requests': processed_requests,
+        'not_submitted_users': not_submitted_users
     })
-
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
@@ -172,6 +649,8 @@ def premium_feature(request):
 
 
 def landing_page(request):
+    if request.user.is_authenticated:
+        return redirect('profile')
     return render(request, 'users/landing.html')
 
 @login_required

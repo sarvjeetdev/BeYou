@@ -3,6 +3,8 @@ from .models import Message, Conversation
 from users.models import CustomUser
 
 
+# In messaging/forms.py, update the MessageForm class
+
 class MessageForm(forms.Form):
     content = forms.CharField(
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Type your message here...'}),
@@ -16,6 +18,11 @@ class MessageForm(forms.Form):
         choices=[('none', 'None'), ('image', 'Image'), ('video', 'Video')],
         required=False,
         widget=forms.HiddenInput()
+    )
+    enable_e2e = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
 
     def clean(self):
@@ -46,7 +53,6 @@ class MessageForm(forms.Form):
                     raise forms.ValidationError("Unsupported file type. Only images and videos are allowed.")
         
         return cleaned_data
-
 
 class CreateGroupForm(forms.ModelForm):
     name = forms.CharField(max_length=100, required=True)

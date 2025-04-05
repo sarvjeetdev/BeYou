@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from .models import Item, Category, Cart, CartItem, Order, OrderItem, Payment
 from .forms import ItemForm, ItemSearchForm, CheckoutForm, PaymentForm
-
+from users.models import UserBlock
 
 @login_required
 def marketplace_home(request):
@@ -15,6 +15,14 @@ def marketplace_home(request):
         return redirect('verification_request')
     
     form = ItemSearchForm(request.GET)
+
+    # Get users who have blocked me or who I've blocked
+    blocked_by_me = UserBlock.objects.filter(blocker=request.user).values_list('blocked_user', flat=True)
+    blocking_me = UserBlock.objects.filter(blocked_user=request.user).values_list('blocker', flat=True)
+    blocked_users = list(blocked_by_me) + list(blocking_me)
+    
+    # Base queryset of available items, excluding blocked users' items
+    items = Item.objects.filter(status='available').exclude(seller__in=blocked_users)
     
     # Base queryset of available items
     items = Item.objects.filter(status='available')
@@ -59,6 +67,14 @@ def item_detail(request, item_id):
         return redirect('verification_request')
     
     item = get_object_or_404(Item, id=item_id)
+
+    # Check for blocks
+    if UserBlock.objects.filter(
+        (Q(blocker=request.user) & Q(blocked_user=item.seller)) |
+        (Q(blocker=item.seller) & Q(blocked_user=request.user))
+    ).exists():
+        messages.error(request, "You cannot view this item due to a user block.")
+        return redirect('marketplace_home')
     return render(request, 'marketplace/item_detail.html', {'item': item})
 
 
@@ -141,6 +157,14 @@ def add_to_cart(request, item_id):
         return redirect('verification_request')
     
     item = get_object_or_404(Item, id=item_id, status='available')
+
+    # Check for blocks
+    if UserBlock.objects.filter(
+        (Q(blocker=request.user) & Q(blocked_user=item.seller)) |
+        (Q(blocker=item.seller) & Q(blocked_user=request.user))
+    ).exists():
+        messages.error(request, "You cannot purchase items from this seller.")
+        return redirect('marketplace_home')
     
     # Don't allow adding your own items to cart
     if item.seller == request.user:

@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from users.models import CustomUser
 from .models import FriendRequest, Notification
 from .forms import UserSearchForm
-
+from users.models import UserBlock
 
 @login_required
 def search_users(request):
@@ -16,10 +16,19 @@ def search_users(request):
     if form.is_valid():
         search_query = form.cleaned_data.get('search_query')
         if search_query:
+            # Get users matching query but exclude blocked users
+            blocked_by_me = UserBlock.objects.filter(blocker=request.user).values_list('blocked_user', flat=True)
+            blocking_me = UserBlock.objects.filter(blocked_user=request.user).values_list('blocker', flat=True)
             users = CustomUser.objects.filter(
                 Q(username__icontains=search_query) | 
                 Q(email__icontains=search_query)
-            ).exclude(id=request.user.id)
+            ).exclude(
+                id=request.user.id
+            ).exclude(
+                id__in=blocked_by_me
+            ).exclude(
+                id__in=blocking_me
+            )
     
     # Get the friendship status for each user
     user_statuses = {}
@@ -48,6 +57,13 @@ def search_users(request):
 @login_required
 def send_friend_request(request, user_id):
     receiver = get_object_or_404(CustomUser, id=user_id)
+
+    if UserBlock.objects.filter(
+        (Q(blocker=request.user) & Q(blocked_user=receiver)) |
+        (Q(blocker=receiver) & Q(blocked_user=request.user))
+    ).exists():
+        messages.error(request, "You cannot send a friend request to this user.")
+        return redirect('search_users')
     
     if receiver == request.user:
         messages.error(request, "You can't send a friend request to yourself.")

@@ -96,8 +96,6 @@ class Payment(models.Model):
     PAYMENT_METHOD_CHOICES = (
         ('credit_card', 'Credit Card'),
         ('debit_card', 'Debit Card'),
-        ('net_banking', 'Net Banking'),
-        ('wallet', 'Digital Wallet'),
     )
     
     STATUS_CHOICES = (
