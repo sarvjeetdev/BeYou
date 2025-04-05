@@ -17,6 +17,8 @@ from django.conf.urls.static import static
 from users.views import landing_page
 from django.views.generic import RedirectView
 from django.http import Http404
+from django.urls import re_path
+from .views import serve_protected_media
 
 
 
@@ -53,6 +55,7 @@ urlpatterns = [
     path('', landing_page, name='landing_page'),
     path('', RedirectView.as_view(url='/users/profile/', permanent=False), name='root'),
     path('captcha/', include('captcha.urls')),
+    re_path(r'^protected-media/(?P<path>.*)$', serve_protected_media),
 ]
 
 # Add media serving for development
