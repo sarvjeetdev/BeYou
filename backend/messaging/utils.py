@@ -1,10 +1,7 @@
-# messaging/utils.py
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.backends import default_backend
-from django.conf import settings
 from base64 import b64encode, b64decode
-import json
 
 def generate_key_pair():
     """Generate a new RSA key pair"""

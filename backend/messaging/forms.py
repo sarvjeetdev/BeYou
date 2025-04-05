@@ -1,9 +1,6 @@
 from django import forms
-from .models import Message, Conversation
+from .models import Conversation
 from users.models import CustomUser
-
-
-# In messaging/forms.py, update the MessageForm class
 
 class MessageForm(forms.Form):
     content = forms.CharField(

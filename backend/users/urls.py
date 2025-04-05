@@ -5,14 +5,13 @@ from . import views
 urlpatterns = [
     path('register/', views.register, name='register'),
     path('profile/', views.profile, name='profile'),
-    path('', views.landing_page, name='landing_page'),  # or some other name
+    path('', views.landing_page, name='landing_page'), 
     path('profile/totp-setup/', views.totp_setup, name='totp_setup'),
     path('profile/<str:username>/', views.profile, name='profile'),
     path('login/', auth_views.LoginView.as_view(template_name='users/login.html', redirect_field_name='next',next_page='profile'),name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('verification/request/', views.verification_request, name='verification_request'),
     path('verification/pending/', views.verification_pending, name='verification_pending'),
-    # Add a new URL for key generation
     path('keys/generate/', views.generate_keys, name='generate_keys'),
     path('keys/download/', views.download_private_keys, name='download_private_keys'),
     

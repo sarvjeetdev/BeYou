@@ -4,7 +4,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 
-
 class Command(BaseCommand):
     help = 'Generate encryption and signing keys for users who do not have them'
 

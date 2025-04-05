@@ -53,7 +53,6 @@ def search_users(request):
         'user_statuses': user_statuses
     })
 
-
 @login_required
 def send_friend_request(request, user_id):
     receiver = get_object_or_404(CustomUser, id=user_id)
@@ -96,7 +95,6 @@ def send_friend_request(request, user_id):
     messages.success(request, f"Friend request sent to {receiver.username}.")
     return redirect('search_users')
 
-
 @login_required
 def accept_friend_request(request, request_id):
     friend_request = get_object_or_404(FriendRequest, id=request_id, receiver=request.user)
@@ -119,7 +117,6 @@ def accept_friend_request(request, request_id):
     messages.success(request, f"You are now friends with {friend_request.sender.username}.")
     return redirect('notifications')
 
-
 @login_required
 def reject_friend_request(request, request_id):
     friend_request = get_object_or_404(FriendRequest, id=request_id, receiver=request.user)
@@ -133,7 +130,6 @@ def reject_friend_request(request, request_id):
     
     messages.success(request, f"You rejected the friend request from {friend_request.sender.username}.")
     return redirect('notifications')
-
 
 @login_required
 def friend_list(request):
@@ -152,7 +148,6 @@ def friend_list(request):
     
     return render(request, 'friends/friend_list.html', {'friends': friends})
 
-
 @login_required
 def notifications(request):
     notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
@@ -167,7 +162,6 @@ def notifications(request):
         'notifications': notifications,
         'friend_requests': friend_requests
     })
-
 
 @login_required
 def mark_notification_read(request, notification_id):

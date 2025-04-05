@@ -3,7 +3,6 @@ from django.conf import settings
 from users.models import CustomUser
 import uuid
 
-
 class Category(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -14,7 +13,6 @@ class Category(models.Model):
     
     class Meta:
         verbose_name_plural = "Categories"
-
 
 class Item(models.Model):
     STATUS_CHOICES = (
@@ -38,7 +36,6 @@ class Item(models.Model):
     def __str__(self):
         return self.name
 
-
 class Cart(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='cart')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -55,7 +52,6 @@ class Cart(models.Model):
     def __str__(self):
         return f"Cart for {self.user.username}"
 
-
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
@@ -67,7 +63,6 @@ class CartItem(models.Model):
     
     def __str__(self):
         return f"{self.item.name} ({self.quantity})"
-
 
 class Order(models.Model):
     STATUS_CHOICES = (
@@ -90,7 +85,6 @@ class Order(models.Model):
     
     def __str__(self):
         return f"Order {self.id} by {self.user.username}"
-
 
 class Payment(models.Model):
     PAYMENT_METHOD_CHOICES = (
@@ -121,7 +115,6 @@ class Payment(models.Model):
     
     def __str__(self):
         return f"Payment {self.id} for Order {self.order.id}"
-
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')

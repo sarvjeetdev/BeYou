@@ -58,7 +58,6 @@ def marketplace_home(request):
         'form': form
     })
 
-
 @login_required
 def item_detail(request, item_id):
     # Only verified users can access item details
@@ -76,7 +75,6 @@ def item_detail(request, item_id):
         messages.error(request, "You cannot view this item due to a user block.")
         return redirect('marketplace_home')
     return render(request, 'marketplace/item_detail.html', {'item': item})
-
 
 @login_required
 def add_item(request):
@@ -98,7 +96,6 @@ def add_item(request):
     
     return render(request, 'marketplace/add_item.html', {'form': form})
 
-
 @login_required
 def edit_item(request, item_id):
     # Only verified users can edit items
@@ -119,7 +116,6 @@ def edit_item(request, item_id):
     
     return render(request, 'marketplace/edit_item.html', {'form': form, 'item': item})
 
-
 @login_required
 def delete_item(request, item_id):
     # Only verified users can delete items
@@ -137,7 +133,6 @@ def delete_item(request, item_id):
     
     return render(request, 'marketplace/delete_item.html', {'item': item})
 
-
 @login_required
 def my_items(request):
     # Only verified users can see their items
@@ -147,7 +142,6 @@ def my_items(request):
     
     items = Item.objects.filter(seller=request.user).order_by('-created_at')
     return render(request, 'marketplace/my_items.html', {'items': items})
-
 
 @login_required
 def add_to_cart(request, item_id):
@@ -187,7 +181,6 @@ def add_to_cart(request, item_id):
     
     return redirect('view_cart')
 
-
 @login_required
 def remove_from_cart(request, item_id):
     # Only verified users can remove items from cart
@@ -206,7 +199,6 @@ def remove_from_cart(request, item_id):
     messages.success(request, "Item removed from cart.")
     
     return redirect('view_cart')
-
 
 @login_required
 def update_cart_quantity(request, item_id):
@@ -240,7 +232,6 @@ def update_cart_quantity(request, item_id):
     
     return redirect('view_cart')
 
-
 @login_required
 def view_cart(request):
     # Only verified users can view cart
@@ -258,7 +249,6 @@ def view_cart(request):
         'cart': cart,
         'cart_items': cart_items
     })
-
 
 @login_required
 def checkout(request):
@@ -314,7 +304,6 @@ def checkout(request):
         'cart': cart,
         'cart_items': cart.items.all()
     })
-
 
 @login_required
 def payment(request, order_id):
@@ -448,7 +437,6 @@ def payment_success(request, order_id):
         'payment': payment
     })
 
-
 @login_required
 def order_confirmation(request, order_id):
     # Only verified users can see order confirmations
@@ -470,7 +458,6 @@ def order_confirmation(request, order_id):
         'payment': payment
     })
 
-
 @login_required
 def my_orders(request):
     # Only verified users can see their orders
@@ -482,11 +469,6 @@ def my_orders(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     
     return render(request, 'marketplace/my_orders.html', {'orders': orders})
-
-
-# In marketplace/views.py, update the sold_items function:
-
-# In marketplace/views.py, update the sold_items function:
 
 @login_required
 def sold_items(request):

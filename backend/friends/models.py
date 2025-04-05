@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 from users.models import CustomUser
 
 class FriendRequest(models.Model):
@@ -20,7 +19,6 @@ class FriendRequest(models.Model):
         
     def __str__(self):
         return f"{self.sender.username} -> {self.receiver.username} ({self.status})"
-
 
 class Notification(models.Model):
     TYPE_CHOICES = [

@@ -3,21 +3,15 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
-from django.core.cache import cache
-from django.http import HttpResponse
 from django.db.models import Q
 from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm, VerificationForm, PasswordResetRequestForm, PasswordResetVerifyForm, SetNewPasswordForm, UserReportForm, MessageReportForm, ItemReportForm
-from .models import UserBlock  # Import UserBlock model
+from .models import UserBlock
 from .models import CustomUser, PasswordResetRequest, Report, UserKey
-from django.views.decorators.http import require_POST
 from django.utils import timezone
-from django.urls import reverse
 import pyotp
 import qrcode
 import base64
 from io import BytesIO
-
-# In users/views.py, update or add this function
 
 @login_required
 def generate_keys(request):
@@ -441,8 +435,6 @@ def blocked_users(request):
     blocks = UserBlock.objects.filter(blocker=request.user).select_related('blocked_user')
     return render(request, 'users/blocked_users.html', {'blocks': blocks})
 
-# In users/views.py - update the register function
-
 def register(request):
     if request.user.is_authenticated:
         return redirect('profile')
@@ -527,7 +519,6 @@ def login_view(request):
     
     return render(request, 'users/login.html')
 
-
 @login_required
 def logout_view(request):
     logout(request)
@@ -563,7 +554,6 @@ def verification_request(request):
     
     return render(request, 'users/verification_request.html', {'form': form})
 
-
 @login_required
 def verification_pending(request):
     """View for users with pending verification"""
@@ -577,7 +567,6 @@ def verification_pending(request):
         return redirect('profile')
     
     return render(request, 'users/verification_pending.html', {'user': user})
-
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
@@ -646,7 +635,6 @@ def premium_feature(request):
         return redirect('totp_setup')
 
     return render(request, 'users/premium_feature.html')
-
 
 def landing_page(request):
     if request.user.is_authenticated:
@@ -733,7 +721,6 @@ def password_reset_request(request):
     
     return render(request, 'users/password_reset_request.html', {'form': form})
 
-
 def password_reset_verify(request, reset_id):
     """Verify the TOTP code from the authenticator app"""
     reset_request = get_object_or_404(PasswordResetRequest, id=reset_id)
@@ -771,7 +758,6 @@ def password_reset_verify(request, reset_id):
         'form': form,
         'user': user
     })
-
 
 def password_reset_confirm(request):
     """Set a new password after successful TOTP verification"""

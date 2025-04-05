@@ -5,7 +5,6 @@ import uuid
 from cryptography.fernet import Fernet
 from django.conf import settings
 
-
 class Conversation(models.Model):
     CONVERSATION_TYPES = (
         ('direct', 'Direct'),
@@ -38,7 +37,6 @@ class Conversation(models.Model):
             return f"Conversation between {participants[0].user.username} and {participants[1].user.username}"
         return f"Conversation {self.id}"
 
-
 class ConversationParticipant(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='participants')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='conversations')
@@ -50,10 +48,6 @@ class ConversationParticipant(models.Model):
     
     def __str__(self):
         return f"{self.user.username} in {self.conversation}"
-
-
-# In messaging/models.py - update the Message model
-# In messaging/models.py, update the Message model
 
 class Message(models.Model):
     MEDIA_TYPES = (
@@ -107,8 +101,6 @@ class Message(models.Model):
             return f"Media message from {self.sender.username} in {self.conversation}"
         return f"Message from {self.sender.username} in {self.conversation}"
 
-
-# Add a new model for E2E encrypted message content
 class EncryptedMessageContent(models.Model):
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='encrypted_contents')
     recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_encrypted_messages')
@@ -125,8 +117,6 @@ class UserConversationKey(models.Model):
     
     class Meta:
         unique_together = ('user', 'conversation')
-
-# In messaging/models.py - add a new model
 
 class UserMessageKey(models.Model):
     """Store individual encrypted message content for each recipient"""

@@ -1,12 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-import uuid
-import pyotp
-from django.conf import settings
 from django.utils import timezone
 
 class CustomUser(AbstractUser):
@@ -32,7 +26,6 @@ class CustomUser(AbstractUser):
     verification_processed_at = models.DateTimeField(null=True, blank=True)
     verification_notes = models.TextField(blank=True, null=True)  # Admin notes
 
-
 class OTP(models.Model):
     PURPOSE_CHOICES = [
         ('registration', 'Registration'),
@@ -48,9 +41,6 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"OTP for {self.user.username} - {self.purpose}"
-
-# In users/models.py - update the UserKey model
-# In users/models.py, update the UserKey model
 
 class UserKey(models.Model):
     KEY_TYPE_CHOICES = [
@@ -139,7 +129,6 @@ class Report(models.Model):
         else:
             return f"Item Report by {self.reporter.username}"
         
- # In users/models.py
 class UserFollow(models.Model):
     follower = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='following')
     followee = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='followers')

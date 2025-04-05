@@ -133,8 +133,6 @@ class ProfileUpdateForm(forms.ModelForm):
             'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Tell others a bit about yourself'}),
         }
 
-# In messaging/forms.py, update the MessageForm class
-
 class MessageForm(forms.Form):
     content = forms.CharField(
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Type your message here...'}),

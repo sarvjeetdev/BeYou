@@ -1,7 +1,6 @@
 from django import forms
 from .models import Item, Order, Payment
 
-
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
@@ -15,7 +14,6 @@ class ItemForm(forms.ModelForm):
         # Add Bootstrap classes
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
-
 
 class ItemSearchForm(forms.Form):
     search_query = forms.CharField(
@@ -49,7 +47,6 @@ class ItemSearchForm(forms.Form):
         category_choices.extend([(str(c.id), c.name) for c in categories])
         self.fields['category'].choices = category_choices
 
-
 class CheckoutForm(forms.ModelForm):
     class Meta:
         model = Order
@@ -57,7 +54,6 @@ class CheckoutForm(forms.ModelForm):
         widgets = {
             'shipping_address': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
-
 
 class PaymentForm(forms.ModelForm):
     MONTH_CHOICES = [(str(i).zfill(2), str(i).zfill(2)) for i in range(1, 13)]

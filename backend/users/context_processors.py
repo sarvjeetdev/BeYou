@@ -1,14 +1,12 @@
 from friends.models import Notification
 from marketplace.models import Cart
 
-
 def notification_count(request):
     """Add notification count to the context."""
     count = 0
     if request.user.is_authenticated:
         count = Notification.objects.filter(user=request.user, is_read=False).count()
     return {'notification_count': count}
-
 
 def cart_count(request):
     """Add cart item count to the context."""

@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages as django_messages
 from django.db.models import Q
-from django.db import transaction
 from .models import Conversation, ConversationParticipant, Message, EncryptedMessageContent
 from users.models import CustomUser, UserKey, UserBlock
 from .forms import MessageForm, CreateGroupForm
@@ -65,7 +64,6 @@ def conversation_list(request):
         'conversations': conversations
     })
 
-
 @login_required
 def start_conversation(request, user_id):
     print(f"Start conversation called with user_id: {user_id}")
@@ -104,10 +102,6 @@ def start_conversation(request, user_id):
     ConversationParticipant.objects.create(conversation=conversation, user=other_user)
     
     return redirect('view_conversation', conversation_id=conversation.id)
-
-# In messaging/views.py, update the view_conversation function
-
-# In messaging/views.py, update the view_conversation function
 
 @login_required
 def view_conversation(request, conversation_id):
@@ -390,7 +384,6 @@ def create_group(request):
     
     return render(request, 'messaging/create_group.html', {'form': form})
 
-
 @login_required
 def remove_from_group(request, conversation_id, user_id):
     conversation = get_object_or_404(Conversation, id=conversation_id, conversation_type='group')
@@ -421,7 +414,6 @@ def remove_from_group(request, conversation_id, user_id):
     
     django_messages.success(request, f"{user_name} has been removed from the group.")
     return redirect('view_conversation', conversation_id=conversation.id)
-
 
 @login_required
 def leave_group(request, conversation_id):
@@ -466,7 +458,6 @@ def leave_group(request, conversation_id):
     django_messages.success(request, f"You have left the group '{conversation.name}'.")
     return redirect('conversation_list')
 
-
 @login_required
 def delete_group(request, conversation_id):
     conversation = get_object_or_404(Conversation, id=conversation_id, conversation_type='group')
@@ -499,7 +490,6 @@ def delete_group(request, conversation_id):
     
     django_messages.success(request, f"Group '{conversation_name}' has been deleted.")
     return redirect('conversation_list')
-
 
 @login_required
 def view_media(request, message_id):
