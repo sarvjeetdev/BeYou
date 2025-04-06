@@ -127,7 +127,7 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'profile'
 LOGOUT_REDIRECT_URL = 'login'
 
-Add these to your settings.py
+# Add these to your settings.py
 SESSION_COOKIE_AGE = 1800  # 30 secs
 SESSION_COOKIE_SECURE = True  # Set to True in production with HTTPS  
 
