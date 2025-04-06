@@ -68,6 +68,8 @@ class Message(models.Model):
     # Add fields for message signing and E2E encryption
     signature = models.TextField(blank=True, null=True)  # Sender's signature
     is_encrypted = models.BooleanField(default=False)  # Whether the message is E2E encrypted
+    blockchain_hash = models.CharField(max_length=64, blank=True, null=True)
+    integrity_verified = models.BooleanField(default=False)
     
     def encrypt_message(self, content):
         if content:
@@ -95,6 +97,25 @@ class Message(models.Model):
     @property
     def is_video(self):
         return self.media_type == 'video'
+    
+    def save(self, *args, **kwargs):
+        # First save to get an ID if this is a new message
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        # Only add to blockchain if it's a new message with content
+        if is_new and (self.encrypted_content or self.media_file):
+            from .blockchain import record_message
+            blockchain_hash = record_message(self)
+            if blockchain_hash:
+                # Update without triggering another save cycle
+                type(self).objects.filter(pk=self.pk).update(
+                    blockchain_hash=blockchain_hash,
+                    integrity_verified=True
+                )
+                # Update instance attributes
+                self.blockchain_hash = blockchain_hash
+                self.integrity_verified = True
     
     def __str__(self):
         if self.is_media_message:

@@ -6,15 +6,223 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm, VerificationForm, PasswordResetRequestForm, PasswordResetVerifyForm, SetNewPasswordForm, UserReportForm, MessageReportForm, ItemReportForm
 from .models import UserBlock
-from .models import CustomUser, PasswordResetRequest, Report, UserKey
+from .models import CustomUser, PasswordResetRequest, Report, UserKey, LoginActivity
 from django.utils import timezone
 import pyotp
 import qrcode
 import base64
 from io import BytesIO
 from .forms import LoginWithCaptchaForm,RegisterWithCaptchaForm
+from django.contrib import messages
 
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def login_logs(request):
+    """Admin view to see login activities"""
+    
+    # Get filter parameters
+    username = request.GET.get('username', '')
+    status = request.GET.get('status', '')
+    ip_address = request.GET.get('ip_address', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Base queryset
+    activities = LoginActivity.objects.all()
+    
+    # Apply filters
+    if username:
+        activities = activities.filter(username__icontains=username)
+    
+    if status:
+        if status == 'success':
+            activities = activities.filter(was_successful=True)
+        elif status == 'failed':
+            activities = activities.filter(was_successful=False)
+    
+    if ip_address:
+        activities = activities.filter(ip_address__icontains=ip_address)
+    
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from = datetime.strptime(date_from, '%Y-%m-%d')
+            activities = activities.filter(timestamp__gte=date_from)
+        except:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime, timedelta
+            date_to = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)  # Include the end date
+            activities = activities.filter(timestamp__lt=date_to)
+        except:
+            pass
+    
+    # Stats
+    total_logins = activities.count()
+    successful_logins = activities.filter(was_successful=True).count()
+    failed_logins = activities.filter(was_successful=False).count()
+    
+    unique_users = activities.filter(was_successful=True).values('user').distinct().count()
+    unique_ips = activities.values('ip_address').distinct().count()
+    
+    # Most recent failed attempts
+    recent_failed = activities.filter(was_successful=False).order_by('-timestamp')[:10]
+    
+    # Get unique usernames with failed attempts
+    usernames_with_failures = activities.filter(was_successful=False).values_list('username', flat=True).distinct()
+    
+    # Count failures by username
+    failure_counts = {}
+    for username in usernames_with_failures:
+        if username:  # Skip None values
+            count = activities.filter(username=username, was_successful=False).count()
+            failure_counts[username] = count
+    
+    # Most failed attempts
+    most_failed = sorted(failure_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    context = {
+        'activities': activities[:100],  # Limit to 100 for performance
+        'total_count': total_logins,
+        'successful_count': successful_logins,
+        'failed_count': failed_logins,
+        'unique_users': unique_users,
+        'unique_ips': unique_ips,
+        'recent_failed': recent_failed,
+        'most_failed': most_failed,
+        # Filter values for form
+        'filter_username': username,
+        'filter_status': status,
+        'filter_ip_address': ip_address,
+        'filter_date_from': date_from,
+        'filter_date_to': date_to,
+    }
+    
+    return render(request, 'users/login_logs.html', context)
 
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def populate_blockchain(request):
+    """Populate blockchain with existing messages"""
+    from messaging.models import Message
+    from messaging.blockchain import record_conversation_message
+    
+    # Get all messages without blockchain hashes
+    message_objects = Message.objects.filter(blockchain_hash__isnull=True)  # Renamed to avoid conflict
+    total = message_objects.count()
+    
+    # Process messages
+    count = 0
+    for message in message_objects:
+        blockchain_hash = record_conversation_message(message)
+        if blockchain_hash:
+            # Update the message
+            Message.objects.filter(pk=message.pk).update(
+                blockchain_hash=blockchain_hash,
+                integrity_verified=True
+            )
+            count += 1
+    
+    # Use Django's messages framework, not the message_objects variable
+    messages.success(request, f"Added {count} messages to the blockchain out of {total} total.")
+    
+    # Get the next URL if provided
+    next_url = request.GET.get('next')
+    if next_url:
+        return redirect(next_url)
+    else:
+        # Default redirect to blockchain explorer
+        return redirect('blockchain_explorer')
+    
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def blockchain_explorer(request):
+    """Admin view to explore the message blockchain"""
+    from messaging.blockchain import get_blockchain_explorer_data, get_conversation_statistics
+    from messaging.models import Conversation
+    
+    # Get blockchain data
+    blockchain_data = get_blockchain_explorer_data()
+    
+    # Get conversation statistics
+    conversation_stats = get_conversation_statistics()
+    
+    # Get conversation information
+    conversations = {}
+    for conv_id in conversation_stats.keys():
+        try:
+            from uuid import UUID
+            conv = Conversation.objects.get(id=UUID(conv_id))
+            if conv.conversation_type == 'direct':
+                # Get participants
+                participants = conv.participants.all()
+                names = [p.user.username for p in participants]
+                conversations[conv_id] = {
+                    'id': conv_id,
+                    'name': f"Direct: {' & '.join(names)}",
+                    'type': 'direct'
+                }
+            else:
+                conversations[conv_id] = {
+                    'id': conv_id,
+                    'name': conv.name,
+                    'type': 'group'
+                }
+        except (Conversation.DoesNotExist, ValueError):
+            conversations[conv_id] = {
+                'id': conv_id,
+                'name': f"Unknown Conversation ({conv_id})",
+                'type': 'unknown'
+            }
+    
+    # Print dictionary structure for debugging
+    print(f"Conversations dictionary: {conversations}")
+    print(f"Conversation stats: {conversation_stats}")
+    
+    # Get statistics
+    total_blocks = len(blockchain_data)
+    total_messages = sum(len(block['data'].get('messages', [])) for block in blockchain_data)
+    
+    context = {
+        'blockchain_data': blockchain_data,
+        'total_blocks': total_blocks,
+        'total_messages': total_messages,
+        'conversation_stats': conversation_stats,
+        'conversations': conversations
+    }
+    
+    return render(request, 'users/blockchain_explorer.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def conversation_blockchain(request, conversation_id):
+    """View blockchain data for a specific conversation"""
+    from messaging.blockchain import get_conversation_blockchain_data, validate_conversation_integrity
+    from messaging.models import Conversation
+    
+    # Get conversation
+    try:
+        conversation = Conversation.objects.get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        messages.error(request, "Conversation not found")
+        return redirect('blockchain_explorer')
+    
+    # Get blockchain data for this conversation
+    blockchain_data = get_conversation_blockchain_data(conversation_id)
+    
+    # Validate conversation integrity
+    integrity_results = validate_conversation_integrity(conversation_id)
+    
+    context = {
+        'conversation': conversation,
+        'blockchain_data': blockchain_data,
+        'integrity_results': integrity_results,
+        'total_blocks': len(blockchain_data)
+    }
+    
+    return render(request, 'users/conversation_blockchain.html', context)
 
 @login_required
 def generate_keys(request):

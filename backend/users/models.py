@@ -139,4 +139,25 @@ class UserFollow(models.Model):
         unique_together = ('follower', 'followee')
 
     def __str__(self):
-        return f"{self.follower.username} follows {self.followee.username}"     
+        return f"{self.follower.username} follows {self.followee.username}"
+
+class LoginActivity(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='login_activities', null=True, blank=True)
+    username = models.CharField(max_length=150, blank=True, null=True)  # Store username even for failed attempts
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    was_successful = models.BooleanField(default=False)
+    failure_reason = models.CharField(max_length=100, blank=True, null=True)
+    session_key = models.CharField(max_length=100, blank=True, null=True)
+    
+    class Meta:
+        verbose_name = "Login Activity"
+        verbose_name_plural = "Login Activities"
+        ordering = ['-timestamp']
+    
+    def __str__(self):
+        status = "Success" if self.was_successful else "Failed"
+        if self.user:
+            return f"{status} - {self.user.username} - {self.timestamp}"
+        return f"{status} - {self.username or 'Unknown'} - {self.timestamp}"     

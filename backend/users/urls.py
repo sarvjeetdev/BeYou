@@ -10,13 +10,16 @@ urlpatterns = [
     path('profile/<str:username>/', views.profile, name='profile'),
     #path('login/', auth_views.LoginView.as_view(template_name='users/login.html', redirect_field_name='next',next_page='profile'),name='login'),
     path('login/', views.login_view, name='login'),
-
     path('logout/', views.logout_view, name='logout'),
     path('verification/request/', views.verification_request, name='verification_request'),
     path('verification/pending/', views.verification_pending, name='verification_pending'),
     path('keys/generate/', views.generate_keys, name='generate_keys'),
     path('keys/download/', views.download_private_keys, name='download_private_keys'),
-    
+    path('admin/blockchain/', views.blockchain_explorer, name='blockchain_explorer'),
+    path('admin/blockchain/conversation/<uuid:conversation_id>/', views.conversation_blockchain, name='conversation_blockchain'),
+    path('admin/blockchain/populate/', views.populate_blockchain, name='populate_blockchain'),
+    path('admin/login-logs/', views.login_logs, name='login_logs'),
+
     # Admin verification URLs
     path('admin/verifications/', views.admin_verification_list, name='admin_verification_list'),
     path('admin/verification/<int:user_id>/', views.process_verification, name='process_verification'),

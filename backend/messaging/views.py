@@ -328,6 +328,20 @@ def view_conversation(request, conversation_id):
                 )
             
             return redirect('view_conversation', conversation_id=conversation.id)
+
+    if request.user.is_staff and request.GET.get('verify_integrity') == '1':
+        from .blockchain import validate_conversation_integrity
+        integrity_results = validate_conversation_integrity(conversation_id)
+        
+        # Display results
+        if integrity_results["unverified_count"] > 0:
+            django_messages.warning(request, f"Blockchain integrity check: {integrity_results['unverified_count']} message(s) failed verification!")
+        elif integrity_results["missing_from_blockchain"] > 0:
+            django_messages.info(request, f"Blockchain integrity check: {integrity_results['missing_from_blockchain']} message(s) not in blockchain.")
+        else:
+            django_messages.success(request, f"Blockchain integrity check passed for all {integrity_results['verified_count']} messages!")
+        
+    is_staff = request.user.is_staff
     
     return render(request, 'messaging/view_conversation.html', {
         'conversation': conversation,
@@ -338,7 +352,8 @@ def view_conversation(request, conversation_id):
         'is_admin': participant.is_admin,
         'is_verified': request.user.is_verified,
         'has_keys': has_keys,
-        'has_private_keys': bool(encryption_private_key)
+        'has_private_keys': bool(encryption_private_key),
+        'is_staff': is_staff
     })
 
 @login_required

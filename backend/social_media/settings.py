@@ -16,7 +16,8 @@ DEBUG = False
 ALLOWED_HOSTS = ["192.168.2.239","127.0.0.1","localhost"]
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'users.auth_backend.LoggingModelBackend',
+    # 'django.contrib.auth.backends.ModelBackend',
 ]
 
 CSRF_TRUSTED_ORIGINS = ["https://192.168.2.239"]
@@ -45,6 +46,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'users.middleware.LoginAttemptMiddleware',
     'users.middleware.AuthenticationMiddleware',
 ]
 
@@ -79,6 +81,7 @@ DATABASES = {
         'USER': os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASSWORD'),
         'HOST': os.environ.get('DB_HOST', 'db'),  # Use "db" (same as service name in Docker)
+        #'HOST': '127.0.0.1', 
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
@@ -124,7 +127,7 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'profile'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Add these to your settings.py
+Add these to your settings.py
 SESSION_COOKIE_AGE = 1800  # 30 secs
 SESSION_COOKIE_SECURE = True  # Set to True in production with HTTPS  
 
