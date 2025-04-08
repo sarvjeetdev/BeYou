@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 
 ALLOWED_HOSTS = ["192.168.2.239","127.0.0.1","localhost"]
@@ -81,8 +81,8 @@ DATABASES = {
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASSWORD'),
-        #'HOST': os.environ.get('DB_HOST', 'db'),  # Use "db" (same as service name in Docker)
-        'HOST': '127.0.0.1', 
+        'HOST': os.environ.get('DB_HOST', 'db'),  # Use "db" (same as service name in Docker)
+        #'HOST': '127.0.0.1', 
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
@@ -133,9 +133,9 @@ SESSION_COOKIE_AGE = 1800  # 30 secs
 SESSION_COOKIE_SECURE = True  # Set to True in production with HTTPS  
 
 # Production m on krna hai 
-# SESSION_COOKIE_SECURE = True     # Only send session cookies over HTTPS
-# CSRF_COOKIE_SECURE = True        # Only send CSRF token over HTTPS
-# SECURE_BROWSER_XSS_FILTER = True
-# SECURE_CONTENT_TYPE_NOSNIFF = True
-# SECURE_SSL_REDIRECT = True  # Only if Nginx is handling HTTPS
-# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')    # Redirect all HTTP to HTTPS (after HTTPS is working!)
+SESSION_COOKIE_SECURE = True     # Only send session cookies over HTTPS
+CSRF_COOKIE_SECURE = True        # Only send CSRF token over HTTPS
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = True  # Only if Nginx is handling HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')    # Redirect all HTTP to HTTPS (after HTTPS is working!)
