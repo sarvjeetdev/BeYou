@@ -60,13 +60,7 @@
                 {% if has_keys %}
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> You have cryptographic keys for secure messaging.
-                        {% if show_private_keys_message %}
-                            <div class="mt-2">
-                                <a href="{% url 'reupload_keys' %}" class="btn btn-sm btn-outline-primary">
-                                    Re-upload Private Keys
-                                </a>
-                            </div>
-                        {% endif %}
+                        
                     </div>
                 {% else %}
                     <div class="alert alert-warning">
