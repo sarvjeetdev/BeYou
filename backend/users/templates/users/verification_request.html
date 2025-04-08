@@ -24,7 +24,7 @@
                         <div class="mb-3">
                             <label for="{{ form.id_document.id_for_label }}" class="form-label">Upload ID Document</label>
                             {{ form.id_document }}
-                            <div class="form-text">Please upload a valid government-issued ID document.</div>
+                            <div class="form-text">Please upload your college ID only. Otherwise admin will not verify.</div>
                             {% if form.id_document.errors %}
                                 <div class="text-danger">{{ form.id_document.errors }}</div>
                             {% endif %}

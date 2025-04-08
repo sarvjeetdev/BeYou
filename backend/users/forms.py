@@ -97,9 +97,16 @@ class VerificationForm(forms.ModelForm):
         model = CustomUser
         fields = ['id_document', 'verification_reason']
         widgets = {
-            'verification_reason': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'id_document': forms.FileInput(attrs={'class': 'form-control'}),
+            'verification_reason': forms.Textarea(attrs={
+                'rows': 3,
+                'class': 'form-control'
+            }),
+            'id_document': forms.FileInput(attrs={
+                'class': 'form-control',
+                'required': 'required'
+            }),
         }
+
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
