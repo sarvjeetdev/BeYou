@@ -127,10 +127,12 @@ services:
     container_name: nginx_proxy
     restart: always
     volumes:
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # Mount certs from host
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro  # Optional auth 
+      - ./nginx/html:/usr/share/nginx/html:ro
       - static_volume:/app/static
       - media_volume:/app/media
-      - ./nginx/ssl:/etc/nginx/ssl:ro  # Mount certs from host
-      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro  # Optional auth
+
     ports:
       - "80:80"
       - "443:443"
