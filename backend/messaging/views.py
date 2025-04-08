@@ -151,6 +151,7 @@ def view_conversation(request, conversation_id):
             'is_media': msg.is_media_message,
             'media_type': msg.media_type,
             'media_url': msg.media_file.url if msg.media_file else None,
+            'blockchain_verified': msg.integrity_verified
         }
         
         # Handle standard encrypted messages
@@ -528,32 +529,134 @@ def view_media(request, message_id):
         'conversation': message.conversation
     })
 
-
-
-
-
-# from django.http import FileResponse, Http404
-# from django.contrib.auth.decorators import login_required
-# from messaging.models import Message, ConversationParticipant
-
-# @login_required
-# def view_media(request, message_id):
-#     # Get message and preload conversation
-#     message = get_object_or_404(
-#         Message.objects.select_related('conversation'),
-#         id=message_id
-#     )
-
-#     # Check user is a participant
-#     if not ConversationParticipant.objects.filter(
-#         conversation=message.conversation,
-#         user=request.user
-#     ).exists():
-#         raise Http404("Unauthorized access.")
-
-#     # Confirm it's a media message
-#     if not message.is_media_message:
-#         raise Http404("No media in this message.")
-
-#     # Return file securely
-#     return FileResponse(message.media.open(), content_type=message.media.file.content_type)
+@login_required
+def manage_group_members(request, conversation_id):
+    conversation = get_object_or_404(Conversation, id=conversation_id, conversation_type='group')
+    
+    # Check if the requester is an admin
+    requester_participant = get_object_or_404(
+        ConversationParticipant, 
+        conversation=conversation,
+        user=request.user,
+        is_admin=True
+    )
+    
+    # Get all current participants
+    current_participants = ConversationParticipant.objects.filter(
+        conversation=conversation
+    ).select_related('user')
+    
+    # Handle member addition
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_members':
+            # Get friend IDs from form
+            friend_ids = request.POST.getlist('friends')
+            if friend_ids:
+                # Get friend users
+                from friends.models import FriendRequest
+                from django.db.models import Q
+                
+                # Get user's verified friends
+                friends_1 = FriendRequest.objects.filter(
+                    sender=request.user,
+                    status='accepted'
+                ).values_list('receiver', flat=True)
+                
+                friends_2 = FriendRequest.objects.filter(
+                    receiver=request.user,
+                    status='accepted'
+                ).values_list('sender', flat=True)
+                
+                friends = CustomUser.objects.filter(
+                    Q(id__in=friends_1) | Q(id__in=friends_2),
+                    id__in=friend_ids,
+                    is_verified=True
+                )
+                
+                # Get current participant user IDs
+                current_participant_ids = current_participants.values_list('user__id', flat=True)
+                
+                # Add new members
+                added_count = 0
+                for friend in friends:
+                    # Skip if already in group
+                    if friend.id in current_participant_ids:
+                        continue
+                        
+                    # Add to group
+                    ConversationParticipant.objects.create(
+                        conversation=conversation,
+                        user=friend
+                    )
+                    
+                    # Notify the user
+                    Notification.objects.create(
+                        user=friend,
+                        notification_type='group_invite',
+                        content=f"{request.user.username} added you to the group '{conversation.name}'",
+                        related_user=request.user
+                    )
+                    
+                    added_count += 1
+                
+                if added_count > 0:
+                    django_messages.success(request, f"Added {added_count} new members to the group.")
+                else:
+                    django_messages.info(request, "No new members were added to the group.")
+                
+                return redirect('manage_group_members', conversation_id=conversation.id)
+        
+        elif action == 'make_admin':
+            user_id = request.POST.get('user_id')
+            if user_id:
+                participant = get_object_or_404(
+                    ConversationParticipant,
+                    conversation=conversation,
+                    user_id=user_id
+                )
+                participant.is_admin = True
+                participant.save()
+                
+                # Notify the user
+                Notification.objects.create(
+                    user=participant.user,
+                    notification_type='group_invite',
+                    content=f"You are now an admin of the group '{conversation.name}'",
+                    related_user=request.user
+                )
+                
+                django_messages.success(request, f"{participant.user.username} is now an admin of this group.")
+                return redirect('manage_group_members', conversation_id=conversation.id)
+    
+    # Get potential friends to add (friends who aren't already in the group)
+    from friends.models import FriendRequest
+    from django.db.models import Q
+    
+    # Get current participant user IDs
+    current_participant_ids = current_participants.values_list('user__id', flat=True)
+    
+    # Get user's verified friends
+    friends_1 = FriendRequest.objects.filter(
+        sender=request.user,
+        status='accepted'
+    ).values_list('receiver', flat=True)
+    
+    friends_2 = FriendRequest.objects.filter(
+        receiver=request.user,
+        status='accepted'
+    ).values_list('sender', flat=True)
+    
+    available_friends = CustomUser.objects.filter(
+        Q(id__in=friends_1) | Q(id__in=friends_2),
+        is_verified=True
+    ).exclude(id__in=current_participant_ids)
+    
+    context = {
+        'conversation': conversation,
+        'participants': current_participants,
+        'available_friends': available_friends
+    }
+    
+    return render(request, 'messaging/manage_group_members.html', context)

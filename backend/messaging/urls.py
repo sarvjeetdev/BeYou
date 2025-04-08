@@ -10,4 +10,5 @@ urlpatterns = [
     path('group/<uuid:conversation_id>/leave/', views.leave_group, name='leave_group'),
     path('group/<uuid:conversation_id>/delete/', views.delete_group, name='delete_group'),
     path('media/<uuid:message_id>/', views.view_media, name='view_media'),
+    path('group/<uuid:conversation_id>/manage/', views.manage_group_members, name='manage_group_members'),
 ]

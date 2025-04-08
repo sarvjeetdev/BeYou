@@ -14,6 +14,8 @@ import base64
 from io import BytesIO
 from .forms import LoginWithCaptchaForm,RegisterWithCaptchaForm
 from django.contrib import messages
+from django.http import HttpResponse
+
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
@@ -656,7 +658,7 @@ def register(request):
             user = form.save()
             login(request, user)
             messages.success(request, f'Account created for {user.username}! You are now logged in.')
-            return redirect('profile')
+            return redirect('download_keys')
     else:
         form = RegisterWithCaptchaForm()
 
@@ -675,17 +677,26 @@ def profile(request, username=None):
     
     # Check if user is viewing someone else's profile
     is_own_profile = (user == request.user)
+    signing_key = request.session.get('signing_private_key', '')
+    encryption_key = request.session.get('encryption_private_key', '')
+    
+    has_keys = UserKey.objects.filter(user=request.user, is_active=True).count() >= 2
+    
+    # Check that keys exist and contain the expected content
+    has_private_keys = (
+        signing_key and 
+        encryption_key and 
+        '-----BEGIN PRIVATE KEY-----' in signing_key and 
+        '-----BEGIN PRIVATE KEY-----' in encryption_key
+    )
     
     # Check if this user is blocked
     is_blocked = False
     if not is_own_profile:
         is_blocked = UserBlock.objects.filter(blocker=request.user, blocked_user=user).exists()
     
-    # Check if user has cryptographic keys
-    has_keys = False
-    if is_own_profile:
-        has_keys = UserKey.objects.filter(user=request.user, is_active=True).count() >= 2
-    
+    show_private_keys_message = has_keys and not has_private_keys
+
     if request.method == 'POST' and is_own_profile:
         u_form = UserUpdateForm(request.POST, instance=request.user)
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
@@ -708,12 +719,13 @@ def profile(request, username=None):
         'is_own_profile': is_own_profile,
         'is_blocked': is_blocked,
         'has_keys': has_keys,
+        'has_private_keys': has_private_keys,
+        'show_private_keys_message': show_private_keys_message,
         'u_form': u_form,
         'p_form': p_form
     }
     
     return render(request, 'users/profile.html', context)
-
 
 
 
@@ -1080,3 +1092,74 @@ def password_reset_confirm(request):
 
 
 ############################################  
+# In users/views.py
+@login_required
+def clear_session_keys(request):
+    """Clear private keys from session"""
+    if 'signing_private_key' in request.session:
+        del request.session['signing_private_key']
+    if 'encryption_private_key' in request.session:
+        del request.session['encryption_private_key']
+    return HttpResponse("Keys cleared")
+
+# In users/views.py
+@login_required
+def reupload_keys(request):
+    """Allow users to re-upload their private keys"""
+    if request.method == 'POST':
+        signing_key = request.POST.get('signing_key', '').strip()
+        encryption_key = request.POST.get('encryption_key', '').strip()
+        
+        if signing_key and encryption_key:
+            # Validate keys (simplified)
+            if "BEGIN PRIVATE KEY" in signing_key and "BEGIN PRIVATE KEY" in encryption_key:
+                request.session['signing_private_key'] = signing_key
+                request.session['encryption_private_key'] = encryption_key
+                messages.success(request, "Private keys uploaded successfully.")
+                return redirect('profile')
+            else:
+                messages.error(request, "Invalid key format. Please ensure you're uploading the correct private keys.")
+        else:
+            messages.error(request, "Both keys are required.")
+    
+    return render(request, 'users/reupload_keys.html')
+
+
+
+
+@login_required
+def download_keys(request):
+    """Allow users to download their private keys"""
+    signing_private_key = request.session.get('signing_private_key')
+    encryption_private_key = request.session.get('encryption_private_key')
+    
+    if not signing_private_key or not encryption_private_key:
+        from django.core.cache import cache
+        # Try to get from cache as a fallback
+        cache_key = f"user_private_keys_{request.user.id}"
+        cached_keys = cache.get(cache_key)
+        
+        if cached_keys:
+            signing_private_key = cached_keys['signing_private_key']
+            encryption_private_key = cached_keys['encryption_private_key']
+            
+            # Store in session
+            request.session['signing_private_key'] = signing_private_key
+            request.session['encryption_private_key'] = encryption_private_key
+            
+            # Delete from cache
+            cache.delete(cache_key)
+        else:
+            messages.error(request, "Your private keys are not available. They may have expired or been cleared.")
+            return redirect('profile')
+    
+    # Check if we need to clear the keys from session after view
+    clear_after_view = request.GET.get('clear', 'false') == 'true'
+    
+    context = {
+        'signing_private_key': signing_private_key,
+        'encryption_private_key': encryption_private_key,
+        'clear_after_view': clear_after_view
+    }
+    
+    return render(request, 'users/download_keys.html', context)

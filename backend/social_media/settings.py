@@ -13,6 +13,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+
 ALLOWED_HOSTS = ["192.168.2.239","127.0.0.1","localhost"]
 
 AUTHENTICATION_BACKENDS = [
