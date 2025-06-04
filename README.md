@@ -1,86 +1,94 @@
-# BeYou - Secure Social Media Platform
+# 🛡️ BeYou – Secure Social Media Platform
 
-## 📌 Project Overview
-BeYou is a **secure social media platform** designed for IIITD internal network deployment. This guide will help you **set up the project locally**, ensuring everything runs smoothly on your machine.
-
----
-## 🚀 Getting Started
-
-### 1️⃣ **Clone the Repository**
-On your local machine, run:
-```sh
-git clone https://github.com/YOUR-REPO/BeYou.git
-cd BeYou
-```
----
-### 2️⃣ **Install Dependencies**
-Make sure **Docker** and **Docker Compose** are installed.
-
-#### **🔹 Install Docker (if not installed)**
-- **Ubuntu/Linux:**
-  ```sh
-  sudo apt update && sudo apt install docker.io -y
-  sudo systemctl start docker
-  sudo systemctl enable docker
-  ```
-- **Windows & Mac:** [Download Docker Desktop](https://www.docker.com/products/docker-desktop/)
-
-#### **🔹 Install Docker Compose**
-Run:
-```sh
-sudo apt install docker-compose -y
-```
-Verify installation:
-```sh
-docker --version
-docker-compose --version
-```
----
-### 3️⃣ **Set Up Environment Variables**
-Copy the `.env.example` file and configure it:
-```sh
-cp backend/.env.example backend/.env
-```
-Modify `.env` based on local settings:
-```sh
-nano backend/.env
-```
-Save and exit.
+> A privacy-focused social platform developed for the IIIT-Delhi internal network. Built with Django, MySQL, and Docker for robust collaboration, secure messaging, and modular deployment.
 
 ---
-### 4️⃣ **Start the Project Using Docker**
-Run the following command from the project root (`BeYou/`):
-```sh
-docker-compose up -d --build
-```
-This will:
-- Start **Django backend** (`backend`)
-- Start **MongoDB database** (`db`)
 
-To check running containers:
-```sh
-docker ps
-```
+## 💡 Overview
+
+BeYou is a secure social networking platform that supports:
+
+* OTP-based user authentication
+* Encrypted private & group messaging
+* Media sharing with CSRF, SQLi, and XSS protection
+* Role-based admin features and a lightweight P2P marketplace
+
+Built for **security**, **scalability**, and **modularity**.
 
 ---
-### 5️⃣ **Access BeYou Locally**
-Once the services are running:
-- Open **http://192.168.2.239/** in your browser (adjust IP if needed).
 
-If everything is set up correctly, you should see:
-```
-Hello, World! BeYou is running successfully.
-```
+## ⚙️ Tech Stack
+
+* **Backend:** Django (Python), MySQL
+* **Frontend:** HTML, CSS, JS
+* **Containerization:** Docker + Docker Compose
+* **Web Server (Deployment):** Nginx
+* **Auth:** PKI-based flows, OTP with virtual keyboard
+* **Security:** HTTPS, CSRF protection, custom middleware logging
+
+---
+
+## 🚀 Local Setup
+
+> 🐳 This project uses Docker to streamline team collaboration and setup. You should have **Docker** and **Docker Compose** installed.
+
+1. **Clone the Repo**
+
+   ```bash
+   git clone https://github.com/YOUR-TEAM/BeYou.git
+   cd BeYou
+   ```
+
+2. **Configure Environment**
+   Copy and customize the `.env` file:
+
+   ```bash
+   cp backend/.env.example backend/.env
+   nano backend/.env  # or use any editor
+   ```
+
+3. **Start Services**
+   From the root directory:
+
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. **Check Containers**
+
+   ```bash
+   docker ps
+   ```
+
+5. **Access Locally**
+   Open your browser:
+
+   ```
+   http://192.168.2.239/
+   ```
+---
 
 
-### Copy Files from VM to Local Machine
-Use this command from your local machine (Windows Command Prompt or PowerShell):
+## 🔐 Security Considerations (Already Enabled)
 
-```
-scp iiitd@192.168.2.239:/path/to/remote/file C:\path\to\local\destination
-```
+Production settings (`settings.py`) include:
 
+* Enforced HTTPS and secure cookies
+* CSRF origin whitelisting
+* Custom login attempt middleware
+* Secret/environment variable injection via `.env`
+* SQL mode strict enforcement
 
-## 🎉 **You're All Set!**
-Now you can access **BeYou** internally and securely. 🚀 Enjoy!
+---
 
+## 🧠 Notes
+
+* You **don’t** need to manually install Python, MySQL, etc. — Docker handles it.
+* Use `docker-compose logs -f backend` for debugging.
+* Default DB host inside Docker is `db` (defined in `docker-compose.yml`).
+* For internal access, whitelist `192.168.2.239` in `ALLOWED_HOSTS`.
+
+---
+
+## 🧑‍💻 Credits
+Developed by a team of 4 at IIIT-Delhi under the guidance of **Dr. Arun Balaji Buduru**
